@@ -73,7 +73,7 @@ void reader_task(void *pv){
                 while(!feof(fd)){//while(dat_ofs < (file_size-1)){
                     fread(data, 1, 512, fd);
                     //f_read(&fd, 1, 512, &data)
-                    xQueueSend(q, (void *) data, 100);
+                    xQueueSend(q, &data, 100);
 
                     //dat_ofs += 512;
                 }
@@ -93,7 +93,6 @@ void player_task(void *pv){
     uint8_t send;
     uint8_t data[512];
     uint8_t *dat;
-//    uint8_t c[32];
     char file[32];
     char *fil;
     int name_size;
@@ -153,9 +152,8 @@ void player_task(void *pv){
 void send_to_mp3(){
     printf("Entered MP3 player function. \n\n");
     //FILE *fd = fopen("1:Louis Armstrong - What A Wonderful World (Lyrics).mp3", "r");
-    //FILE *fd = fopen("1:Watchdog/stuck.txt", "r");
-    //FILE *fd = fopen("1:Fetty Wap - Trap Queen (Clean).mp3", "r");
-    FILE *fd = fopen("1:The Weeknd - Can't Feel My Face.mp3", "r");
+    FILE *fd = fopen("1:Fetty Wap - Trap Queen (Clean).mp3", "r");
+    //FILE *fd = fopen("1:The Weeknd - Can't Feel My Face.mp3", "r");
     //FILE *fd = fopen("1:SEA 30 SEC.mp3", "r");
     //FILE *fd = fopen("1:Belinda Carlisle - Heaven Is a Place on Earth Lyrics.mp3", "r");
 
@@ -272,7 +270,7 @@ void send_to_mp3_2(){
 
 CMD_HANDLER_FUNC(playSong)
 {
-    char name[32]; //standard 32-byte size
+    char name[10]; //standard 32-byte size
     // You can use FreeRTOS API or the wrapper resume() or suspend() methods
     if (cmdParams == "foo.mp3") {
         vTaskResume(xHandle1);
@@ -281,7 +279,7 @@ CMD_HANDLER_FUNC(playSong)
         printf("The song name is given at the input: %s \n\n", name);
         delay_ms(10);
 
-        xQueueSend(q2, (void *) name, 500);
+        xQueueSend(q2, &name, 500);
     }
     else {
         vTaskSuspend(xHandle1);
@@ -306,15 +304,15 @@ int main(void) {
 //    obj.send_mp3_data();
 //    send_to_mp3();
 
-    q = xQueueCreate(10, sizeof(uint8_t *)); //used for sending the mp3 file data
-    q2 = xQueueCreate(10, sizeof(char *)); //used for sending the title
+    q = xQueueCreate(1, sizeof(uint8_t)*512); //used for sending the mp3 file data
+    q2 = xQueueCreate(1, sizeof(char)*10); //used for sending the title
 
     const uint32_t STACK_SIZE_WORDS = 1024; //make sure the stack size is big enough to send data through
 
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
 
-    xTaskCreate(reader_task, "t1",  STACK_SIZE_WORDS,(void *) 1, 1, &xHandle1);
-    xTaskCreate(player_task, "t2",  STACK_SIZE_WORDS,(void *) 1, 1, &xHandle2);
+    xTaskCreate(reader_task, "t1",  STACK_SIZE_WORDS,(void *) 1, 1, &xHandle1); //sender
+    xTaskCreate(player_task, "t2",  STACK_SIZE_WORDS,(void *) 1, 1, &xHandle2); //receiver
 
     vTaskSuspend(xHandle1);
 
