@@ -13,6 +13,7 @@
 #include "ssp1.h"
 #include "gpio.hpp"
 #include <fstream>
+#include "ff.h"
 
 #define sci_status 0x01
 #define sci_bass 0x02
@@ -35,6 +36,12 @@ private:
     GPIO* XDCS;
     GPIO* XCS;
     GPIO* RST;
+
+    volatile bool run_song; //if true continue running song, if false, pause song
+    std::string songs[10]; //contains all the songs
+    int song_idx; //indexes the song you want - changes when external button is set
+    //uint8_t volume; //volume that gets set when external button is pressed
+
 public:
     VS(GPIO *dreq, GPIO *xdcs, GPIO *xcs, GPIO *rst);
     ~VS();
@@ -43,7 +50,11 @@ public:
     void send_mp3_data();//FILE *FD);
     void write_to_sci(uint8_t addr, uint16_t data);
     uint16_t read_from_sci(uint8_t addr);
-    void setVolume(uint8_t vol);
+    void setVolume(uint8_t vol); //adjust the volume
+    void pauseSong(); //prevent streaming of bytes ~ will set run_song boolean flag
+    void resumeSong(); //continue streaming of bytes ~ will reset run_song boolean flag
+    bool ret_run_song_flag();
+    FRESULT songLibrary(char* path); //read all songs from the directory and store their names in the songs array
 };
 
 

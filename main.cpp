@@ -32,6 +32,7 @@
 #include "VS1053_driver.hpp"
 #include "tasks.hpp"
 #include "ff.h"
+#include "eint.h"
 
 /* returns minimum of two given numbers */
 #define min(a,b) (((a)<(b))?(a):(b))
@@ -40,11 +41,17 @@ GPIO _dreq(P0_29);
 GPIO _xdcs(P2_7);
 GPIO _xcs(P2_6);
 GPIO _rst(P0_1);
+GPIO blue_button(P0_0);
+
+VS obj(&_dreq, &_xdcs, &_xcs, &_rst);
 
 QueueHandle_t q;
 QueueHandle_t q2;
 TaskHandle_t xHandle1;
 TaskHandle_t xHandle2;
+TaskHandle_t playHandle;
+
+//possible use of semaphore for allocating task execution for volume control versus playing song
 
 void reader_task(void *pv){
     printf("\n\nEntered reader task.\n\n");
@@ -149,11 +156,13 @@ void player_task(void *pv){
     }
 }
 
-void send_to_mp3(){
+void send_to_mp3(void *pv){
+    delay_ms(500);
+
     printf("Entered MP3 player function. \n\n");
-    //FILE *fd = fopen("1:Louis Armstrong - What A Wonderful World (Lyrics).mp3", "r");
-    FILE *fd = fopen("1:Fetty Wap - Trap Queen (Clean).mp3", "r");
-    //FILE *fd = fopen("1:The Weeknd - Can't Feel My Face.mp3", "r");
+    FILE *fd = fopen("1:songs/Ariana Grande - Last Christmas.mp3", "r");
+    //FILE *fd = fopen("1:Fetty Wap - Trap Queen (Clean).mp3", "r");
+    //FILE *fd = fopen("1:songs/The Weeknd - Can't Feel My Face.mp3", "r");
     //FILE *fd = fopen("1:SEA 30 SEC.mp3", "r");
     //FILE *fd = fopen("1:Belinda Carlisle - Heaven Is a Place on Earth Lyrics.mp3", "r");
 
@@ -174,7 +183,8 @@ void send_to_mp3(){
         if(fd){
             printf("File successfully opened.\n\n");
 
-            while(!feof(fd)){//while(!(val < 512)){ //while(1){//while(dat_ofs < (file_size-1)){
+            while(1){
+            while(!feof(fd) && obj.ret_run_song_flag()){//while(!(val < 512)){ //while(1){//while(dat_ofs < (file_size-1)){
             val = fread(data, 1, 512, fd);
 //            consume(data, val);
 
@@ -201,6 +211,8 @@ void send_to_mp3(){
 //                    break;
 //                }
             }
+            }
+
             fclose(fd);
         }
         else{
@@ -220,7 +232,7 @@ void send_to_mp3_2(){
     char title[100];
     char songName[200];
     //strcpy(title, "1:");
-    strcpy(songName, "1:Fetty Wap - Trap Queen (Clean).mp3");
+    strcpy(songName, "1:songs/Fetty Wap - Trap Queen (Clean).mp3");
     //strcpy(songName, "1:Belinda Carlisle - Heaven Is a Place on Earth Lyrics.mp3");
 
     uint8_t data[512];
@@ -288,11 +300,29 @@ CMD_HANDLER_FUNC(playSong)
     return true;
 }
 
+void red_button_press_isr(){
 
+}
+
+void blue_button_press_isr(){
+    if(obj.ret_run_song_flag()){ //if true
+        delay_ms(10);
+        obj.pauseSong(); //set to false
+        printf("Pause the song \n");
+    }
+    else{//if false
+        delay_ms(10);
+        obj.resumeSong(); //set to true
+        printf("Resume the song \n");
+    }
+}
+
+void green_button_press_isr(){
+
+}
 
 int main(void) {
 
-    VS obj(&_dreq, &_xdcs, &_xcs, &_rst);
     obj.init();
 
     printf("Initialization is Complete.\n");
@@ -303,23 +333,56 @@ int main(void) {
 //    printf("MODE REGISTER: %x\n", obj.read_from_sci(sci_mode));
 //    obj.send_mp3_data();
 //    send_to_mp3();
+//      send_to_mp3_2();
 
-    q = xQueueCreate(1, sizeof(uint8_t)*512); //used for sending the mp3 file data
-    q2 = xQueueCreate(1, sizeof(char)*10); //used for sending the title
+//    q = xQueueCreate(1, sizeof(uint8_t)*512); //used for sending the mp3 file data
+//    q2 = xQueueCreate(1, sizeof(char)*10); //used for sending the title
+//
+//    const uint32_t STACK_SIZE_WORDS = 1024; //make sure the stack size is big enough to send data through
+//
+//    scheduler_add_task(new terminalTask(PRIORITY_HIGH));
+//
+//    xTaskCreate(reader_task, "t1",  STACK_SIZE_WORDS,(void *) 1, 1, &xHandle1); //sender
+//    xTaskCreate(player_task, "t2",  STACK_SIZE_WORDS,(void *) 1, 1, &xHandle2); //receiver
+//
+//    vTaskSuspend(xHandle1);
+//
+//    scheduler_start();
+//
+//    vTaskStartScheduler();
 
-    const uint32_t STACK_SIZE_WORDS = 1024; //make sure the stack size is big enough to send data through
+    void *val;
 
-    scheduler_add_task(new terminalTask(PRIORITY_HIGH));
+    blue_button.setAsInput();
 
-    xTaskCreate(reader_task, "t1",  STACK_SIZE_WORDS,(void *) 1, 1, &xHandle1); //sender
-    xTaskCreate(player_task, "t2",  STACK_SIZE_WORDS,(void *) 1, 1, &xHandle2); //receiver
+    const uint32_t STACK_SIZE_WORDS = 1024;
 
-    vTaskSuspend(xHandle1);
+    eint3_enable_port0(0, eint_rising_edge, blue_button_press_isr);
 
-    scheduler_start();
+    send_to_mp3(val);
 
-    vTaskStartScheduler();
+    //xTaskCreate(send_to_mp3, "send_to_mp3",  STACK_SIZE_WORDS,(void *) 1, 1, &playHandle); //receiver
+
+    //scheduler_start();
+
+    //vTaskStartScheduler();
+
+/*    FATFS fs;
+    FRESULT res;
+    char buff[256];
+
+    res = f_mount(&fs, "", 1);
+    if (res == FR_OK) {
+        strcpy(buff, "1:/songs");
+        res = obj.songLibrary(buff);
+    }
+*/
 
     return 0;
 }
+
+
+/* terminal task can be used to play one song.
+ * use other tasks instead to control the tasks.
+ */
 

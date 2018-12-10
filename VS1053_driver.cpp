@@ -16,6 +16,10 @@
 #include "utilities.h"
 #include <fstream>
 #include "ff.h"
+#include "uart0_min.h"
+//#include <dirent.h>
+#include <sys/types.h>
+#include <libgen.h>
 
 VS::VS(GPIO *dreq, GPIO *xdcs, GPIO *xcs, GPIO *rst){
 //due to limitations in data allocation objects must be passed by reference.
@@ -23,6 +27,8 @@ VS::VS(GPIO *dreq, GPIO *xdcs, GPIO *xcs, GPIO *rst){
     XDCS = xdcs;
     XCS = xcs;
     RST = rst;
+    run_song = false;
+    song_idx = 0;
 }
 
 VS::~VS(){
@@ -147,7 +153,10 @@ void VS::setVolume(uint8_t vol){
 
 void VS::send_mp3_data(){//FILE *FD){
 
-    FILE *FD = fopen("1:Louis Armstrong - What A Wonderful World (Lyrics).mp3", "r");
+    //FILE *FD = fopen("1:Louis Armstrong - What A Wonderful World (Lyrics).mp3", "r");
+    //FILE *FD = fopen("1:Fetty Wap - Trap Queen (Clean).mp3", "r");
+    //FILE *FD = fopen("1:Ariana Grande - Last Christmas.mp3", "r");
+    FILE *FD= fopen("1:The Weeknd - Can't Feel My Face.mp3", "r");
     //setVolume(0x50);
     //write_to_sci(sci_vol, 0x0407);
 
@@ -156,30 +165,36 @@ void VS::send_mp3_data(){//FILE *FD){
     uint8_t *buf;
     uint8_t buf_pos=0;
     int buf_ofs = 0;
+    uint8_t send;
+
+    printf("Playing Ariana Grande - Last Christmas \n\n");
 
     fseek(FD, 0L, SEEK_END); //go to last position
     int file_size = ftell(FD);
-    fseek(FD, 0L, SEEK_SET); //go to the front
+    fseek(FD, 0L, SEEK_SET); //go to the front0_
 
-    printf("The size of the file is %i", file_size);
+    printf("The size of the file is %i \n\n", file_size);
 
     if(FD){
-        printf("File successfully opened.\n\n");
-        while(feof(FD)){//while(buf_ofs < (file_size-1)){ //do 100 read transactions
+        uart0_puts("File successfully opened.");
+        while(!feof(FD)){//while(buf_ofs < (file_size-1)){ //do 100 read transactions
+        //uart0_puts("in loop.\n");
         fread(buffer, 1, 512, FD); //read 31 elements, the element has a size of 1 bytes, stored into a variable buffer
         buf = buffer;
-
+        //uart0_puts("in loop_1.\n");
             while(buf_pos < 512){
+                //uart0_puts("in loop2.\n");
                 while(!DREQ->read()); //do the next 32 byte transfer only when dreq flag says the queque is availible
                   //if DREQ is high then you may commence the transfer of the bytes
 
                 XDCS->setLow(); //chip select the decoder (active low)
-                delay_us(1);
                 {
-                recv = ssp0_exchange_byte(*buf++);
+                send = buffer[buf_pos];//*buf++;
+                    //send = *buf++;
+                printf("%d",send);
+                recv = ssp0_exchange_byte(send);//buffer[buf_pos]);
                 }
                 XDCS->setHigh();
-                delay_us(1);
 
                 buf_pos++;
             }
@@ -192,4 +207,55 @@ void VS::send_mp3_data(){//FILE *FD){
     else{
         printf("File failed to open\n");
     }
+}
+
+FRESULT VS::songLibrary(char* path){
+//    DIR *dir;
+//    struct dirent *folder;
+//    int fd;
+
+//    dir = fdopendir(fd);
+//
+//    for(int i= 0; i<256; i++){
+//        dir->d_name[i];
+//    }
+//
+//    folder = readdir(dir);
+
+    FRESULT res;
+    DIR dir;
+    UINT i;
+    static FILINFO fno;
+
+    res = f_opendir(&dir, path);                       /* Open the directory */
+    if (res == FR_OK) {
+        for (;;) {
+            res = f_readdir(&dir, &fno);                   /* Read a directory item */
+            if (res != FR_OK || fno.fname[0] == 0) break;  /* Break on error or end of dir */
+            if (fno.fattrib & AM_DIR) {                    /* It is a directory */
+                i = strlen(path);
+                sprintf(&path[i], "/%s", fno.fname);
+                res = songLibrary(path);                    /* Enter the directory */
+                if (res != FR_OK) break;
+                path[i] = 0;
+            } else {                                       /* It is a file. */
+                printf("%s/%s\n", path, fno.fname);
+            }
+        }
+        f_closedir(&dir);
+    }
+
+    //printf("long filename: %s\n", *fno.lfname);
+
+    return res;
+}
+
+void VS::pauseSong(){ //prevent streaming of bytes ~ will set run_song boolean flag
+    run_song = false;
+}
+void VS::resumeSong(){ //continue streaming of bytes ~ will reset run_song boolean flag
+    run_song = true;
+}
+bool VS::ret_run_song_flag(){
+    return run_song;
 }
