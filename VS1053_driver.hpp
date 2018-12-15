@@ -5,8 +5,8 @@
  *      Author: Nikkitha
  */
 
-#ifndef VS1053_DRIVER_HPP_
-#define VS1053_DRIVER_HPP_
+#ifndef VS1053_HPP_
+#define VS1053_HPP_
 
 #include "LPC17xx.h"
 #include "ssp0.h"
@@ -14,6 +14,10 @@
 #include "gpio.hpp"
 #include <fstream>
 #include "ff.h"
+
+#include "LabGPIO_0.hpp"
+#include "LabGPIOInterrupts.hpp"
+#include "LabSPI.hpp"
 
 #define sci_status 0x01
 #define sci_bass 0x02
@@ -25,17 +29,12 @@
 #define write_op_sci 0x02
 #define read_op_sci 0x03
 
-//GPIO DREQ(P0_29);
-//GPIO XDCS(P0_0);
-//GPIO XCS(P0_30);
-//GPIO RST(P0_1);
-
-class VS{
+class VS1053{
 private:
-    GPIO* DREQ;
-    GPIO* XDCS;
-    GPIO* XCS;
-    GPIO* RST;
+    LabGPIO_0* DREQ;
+    LabGPIO_0* XDCS;
+    LabGPIO_0* XCS;
+    LabGPIO_0* RST;
 
     volatile bool run_song; //if true continue running song, if false, pause song
     std::string songs[10]; //contains all the songs
@@ -43,10 +42,11 @@ private:
     //uint8_t volume; //volume that gets set when external button is pressed
 
 public:
-    VS(GPIO *dreq, GPIO *xdcs, GPIO *xcs, GPIO *rst);
-    ~VS();
-    void init(); /*setup using the SCI register*/
-//    void check_dreq(){};
+    // LabSpi* SPI;
+    VS1053(LabGPIO_0 *dreq, LabGPIO_0 *xdcs, LabGPIO_0 *xcs, LabGPIO_0 *rst);//, LabSpi *spi);
+    ~VS1053();
+    void vs_init(); /*setup using the SCI register*/
+    // void check_dreq(){};
     void send_mp3_data();//FILE *FD);
     void write_to_sci(uint8_t addr, uint16_t data);
     uint16_t read_from_sci(uint8_t addr);

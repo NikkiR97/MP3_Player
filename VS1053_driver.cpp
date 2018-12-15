@@ -1,13 +1,18 @@
 /*
- * VS1053_driver.cpp
+ * VS1053.cpp
  *
  *  Created on: Nov 14, 2018
  *      Author: Nikkitha
  */
-#include "VS1053_driver.hpp"
+#include "VS1053.hpp"
 #include "ssp0.h"
-#include "ssp1.h"
-#include "gpio.hpp"
+// #include "ssp1.h"
+// #include "gpio.hpp"
+
+#include "LabGPIO_0.hpp"
+#include "LabSPI.hpp"
+#include "LabGPIOInterrupts.hpp"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,21 +26,31 @@
 #include <sys/types.h>
 #include <libgen.h>
 
-VS::VS(GPIO *dreq, GPIO *xdcs, GPIO *xcs, GPIO *rst){
+ VS1053::VS1053(LabGPIO_0 *dreq, LabGPIO_0 *xdcs, LabGPIO_0 *xcs, LabGPIO_0 *rst){//, LabSpi *spi){
 //due to limitations in data allocation objects must be passed by reference.
+    bool ret;
+
     DREQ = dreq;
     XDCS = xdcs;
     XCS = xcs;
     RST = rst;
     run_song = false;
     song_idx = 0;
+    // SPI = spi;
+    // ret = SPI->init(8, SPI_, External, 1);
+    // if(ret){
+    //     printf("SPI initialized successfully.\n");
+    // }
+    // else{
+    //     printf("SPI not initialized properly.\n");
+    // }
 }
 
-VS::~VS(){
+VS1053::~VS1053(){
 /*Do Nothing*/
 }
 
-void VS::init(){
+void VS1053::vs_init(){
     DREQ->setAsInput(); //active high
     XDCS->setAsOutput(); //enabling sci
     XCS->setAsOutput(); //enabling sdi
@@ -43,7 +58,7 @@ void VS::init(){
 
     XDCS->setHigh(); //active low
     XCS->setHigh(); //active low
-    RST->setLow(); //When the XRESET -signal is driven low, VS1053b is reset and all the control registers and
+    RST->setLow(); //When the XRESET -signal is driven low, VS10531053b is reset and all the control registers and
     //internal states are set to the initial values.
 
     //set clock speed as 24Mhz
@@ -69,7 +84,7 @@ void VS::init(){
 
 }
 
-void VS::write_to_sci(uint8_t addr, uint16_t data){
+void VS1053::write_to_sci(uint8_t addr, uint16_t data){
     uint8_t write;
     uint8_t val;
 //    uint8_t dat0;
@@ -82,7 +97,7 @@ void VS::write_to_sci(uint8_t addr, uint16_t data){
     dat0 = data>>8;
     dat1 = data & 0x00ff;
 
-    while(!DREQ->read()); //do the next 32 byte transfer only when dreq flag says the queque is availible
+    while(!DREQ->getLevel()); //do the next 32 byte transfer only when dreq flag says the queque is availible
                   //if DREQ is high then you may commence the transfer of the bytes
                  //chip select the decoder (active low)
 
@@ -104,7 +119,7 @@ void VS::write_to_sci(uint8_t addr, uint16_t data){
     XCS->setHigh();
 }
 
-uint16_t VS::read_from_sci(uint8_t addr){
+uint16_t VS1053::read_from_sci(uint8_t addr){
     uint8_t read;
     uint8_t val;
 //    uint8_t dat0;
@@ -112,7 +127,7 @@ uint16_t VS::read_from_sci(uint8_t addr){
     uint8_t data;
     uint16_t data_;
 
-    while(!DREQ->read()); //do the next 32 byte transfer only when dreq flag says the queque is availible
+    while(!DREQ->getLevel()); //do the next 32 byte transfer only when dreq flag says the queque is availible
                   //if DREQ is high then you may commence the transfer of the bytes
                  //chip select the decoder (active low)
 
@@ -136,7 +151,7 @@ uint16_t VS::read_from_sci(uint8_t addr){
     return data_;
 }
 
-void VS::setVolume(uint8_t vol){
+void VS1053::setVolume(uint8_t vol){
 //    Example: for a volume of -2.0 dB for the left channel and -3.5 dB for the right channel: (2.0/0.5)
 //    = 4, 3.5/0.5 = 7 ! SCI_VOL = 0x0407. (pg. 48)
     uint8_t left;
@@ -151,7 +166,7 @@ void VS::setVolume(uint8_t vol){
 
 }
 
-void VS::send_mp3_data(){//FILE *FD){
+void VS1053::send_mp3_data(){//FILE *FD){
 
     //FILE *FD = fopen("1:Louis Armstrong - What A Wonderful World (Lyrics).mp3", "r");
     //FILE *FD = fopen("1:Fetty Wap - Trap Queen (Clean).mp3", "r");
@@ -184,7 +199,7 @@ void VS::send_mp3_data(){//FILE *FD){
         //uart0_puts("in loop_1.\n");
             while(buf_pos < 512){
                 //uart0_puts("in loop2.\n");
-                while(!DREQ->read()); //do the next 32 byte transfer only when dreq flag says the queque is availible
+                while(!DREQ->getLevel()); //do the next 32 byte transfer only when dreq flag says the queque is availible
                   //if DREQ is high then you may commence the transfer of the bytes
 
                 XDCS->setLow(); //chip select the decoder (active low)
@@ -209,7 +224,7 @@ void VS::send_mp3_data(){//FILE *FD){
     }
 }
 
-FRESULT VS::songLibrary(char* path){
+FRESULT VS1053::songLibrary(char* path){
 //    DIR *dir;
 //    struct dirent *folder;
 //    int fd;
@@ -250,12 +265,12 @@ FRESULT VS::songLibrary(char* path){
     return res;
 }
 
-void VS::pauseSong(){ //prevent streaming of bytes ~ will set run_song boolean flag
+void VS1053::pauseSong(){ //prevent streaming of bytes ~ will set run_song boolean flag
     run_song = false;
 }
-void VS::resumeSong(){ //continue streaming of bytes ~ will reset run_song boolean flag
+void VS1053::resumeSong(){ //continue streaming of bytes ~ will reset run_song boolean flag
     run_song = true;
 }
-bool VS::ret_run_song_flag(){
+bool VS1053::ret_run_song_flag(){
     return run_song;
 }
