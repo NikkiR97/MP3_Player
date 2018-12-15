@@ -35,6 +35,7 @@ private:
     LabGPIO_0* XDCS;
     LabGPIO_0* XCS;
     LabGPIO_0* RST;
+    // LabSpi* SPI;
 
     volatile bool run_song; //if true continue running song, if false, pause song
     std::string songs[10]; //contains all the songs
@@ -42,7 +43,6 @@ private:
     //uint8_t volume; //volume that gets set when external button is pressed
 
 public:
-    // LabSpi* SPI;
     VS1053(LabGPIO_0 *dreq, LabGPIO_0 *xdcs, LabGPIO_0 *xcs, LabGPIO_0 *rst);//, LabSpi *spi);
     ~VS1053();
     void vs_init(); /*setup using the SCI register*/

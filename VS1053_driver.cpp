@@ -5,13 +5,14 @@
  *      Author: Nikkitha
  */
 #include "VS1053.hpp"
-#include "ssp0.h"
+// #include "ssp0.h"
 // #include "ssp1.h"
 // #include "gpio.hpp"
 
 #include "LabGPIO_0.hpp"
-#include "LabSPI.hpp"
+// #include "LabSPI.hpp"
 #include "LabGPIOInterrupts.hpp"
+#include "spi_driver.hpp"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -36,8 +37,9 @@
     RST = rst;
     run_song = false;
     song_idx = 0;
+
     // SPI = spi;
-    // ret = SPI->init(8, SPI_, External, 1);
+    // ret = spi_init(8, spi, Ext, 1);
     // if(ret){
     //     printf("SPI initialized successfully.\n");
     // }
@@ -51,6 +53,7 @@ VS1053::~VS1053(){
 }
 
 void VS1053::vs_init(){
+
     DREQ->setAsInput(); //active high
     XDCS->setAsOutput(); //enabling sci
     XCS->setAsOutput(); //enabling sdi
@@ -62,7 +65,8 @@ void VS1053::vs_init(){
     //internal states are set to the initial values.
 
     //set clock speed as 24Mhz
-    ssp0_init(1);
+    // ssp0_init(1);
+    spi_init(8, spi, Ext, 16);
 
     RST->setHigh();
 
@@ -71,7 +75,8 @@ void VS1053::vs_init(){
     write_to_sci(sci_audata, 0xAC45);
     write_to_sci(sci_clockf, 0x2000); //12mhz
 
-    ssp0_init(12);
+    // set_clock_speed(8); //12 Mhz
+    // ssp0_init(12);
 
     //set base volume as zero
     write_to_sci(sci_vol, 0x6060); //zero volume for now.
@@ -107,13 +112,13 @@ void VS1053::write_to_sci(uint8_t addr, uint16_t data){
     XCS->setLow(); //chip select the decoder (active low)
     {
     //recv = music.transfer(buffer[j]);
-    write = ssp0_exchange_byte(write_op_sci);
+    write = spi_transfer(write_op_sci);
     printf("recv byte after write op sent: %x \n", write);
-    val = ssp0_exchange_byte(addr);
+    val = spi_transfer(addr);
     printf("recv byte after address sent: %x \n", val);
-    info = ssp0_exchange_byte(dat0);
+    info = spi_transfer(dat0);
     printf("recv byte after info sent: %x \n", info);
-    info_ = ssp0_exchange_byte(dat1);
+    info_ = spi_transfer(dat1);
     printf("recv byte after info sent: %x \n", info_);
     }
     XCS->setHigh();
@@ -137,13 +142,13 @@ uint16_t VS1053::read_from_sci(uint8_t addr){
     XCS->setLow(); //chip select the decoder (active low)
     {
     //recv = music.transfer(buffer[j]);
-    read = ssp0_exchange_byte(read_op_sci);
+    read = spi_transfer(read_op_sci);
     printf("recv byte after read op sent: %x \n", read);
-    val = ssp0_exchange_byte(addr);
+    val = spi_transfer(addr);
     printf("recv byte after address sent: %x \n", val);
-    data = ssp0_exchange_byte(0x00);
+    data = spi_transfer(0x00);
     printf("recv byte - data partial - after 0x00 sent: %x \n", data);//((dat0>>4) & 0x04));
-    data_ = (data<<8) | ssp0_exchange_byte(0x00);
+    data_ = (data<<8) | spi_transfer(0x00);
     printf("recv byte - data - after 0x00 sent: %x \n", data_);
     }
     XCS->setHigh();
@@ -207,7 +212,7 @@ void VS1053::send_mp3_data(){//FILE *FD){
                 send = buffer[buf_pos];//*buf++;
                     //send = *buf++;
                 printf("%d",send);
-                recv = ssp0_exchange_byte(send);//buffer[buf_pos]);
+                recv = spi_transfer(send);//buffer[buf_pos]);
                 }
                 XDCS->setHigh();
 

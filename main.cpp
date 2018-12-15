@@ -30,29 +30,32 @@
 
 #include "LabGPIO_0.hpp"
 #include "LabGPIOInterrupts.hpp"
-#include "LabSPI.hpp"
+// #include "LabSPI.hpp"
+#include "spi_driver.hpp"
 
 /* returns minimum of two given numbers */
-#define min(a,b) (((a)<(b))?(a):(b))
+#define min(a,b) (((a)<(b))?(a):(b))    
+
+int i=0;
 
 LabGPIO_0 _dreq(29,0);
 LabGPIO_0 _xdcs(7, 2);
 LabGPIO_0 _xcs(6, 2);
 LabGPIO_0 _rst(1, 0);
-// LabSpi ssp; 
+// LabSpi ssp(i);     
 LabGPIO_0 blue_button(0,0);
 
 VS1053 obj(&_dreq, &_xdcs, &_xcs, &_rst);//, &ssp);
 
-    void send_to_mp3(void *pv){
+void send_to_mp3(void *pv){
     delay_ms(500);
 
     printf("Entered MP3 player function. \n\n");
-    FILE *fd = fopen("1:songs/Ariana Grande - Last Christmas.mp3", "r");
+    //FILE *fd = fopen("1:songs/Ariana Grande - Last Christmas.mp3", "r");
     //FILE *fd = fopen("1:Fetty Wap - Trap Queen (Clean).mp3", "r");
     //FILE *fd = fopen("1:songs/The Weeknd - Can't Feel My Face.mp3", "r");
     //FILE *fd = fopen("1:SEA 30 SEC.mp3", "r");
-    //FILE *fd = fopen("1:Belinda Carlisle - Heaven Is a Place on Earth Lyrics.mp3", "r");
+    FILE *fd = fopen("1:songs/Belinda Carlisle - Heaven Is a Place on Earth Lyrics.mp3", "r");
 
     fseek(fd, 0L, SEEK_END); //go to last position
     int file_size = ftell(fd);
@@ -85,7 +88,7 @@ VS1053 obj(&_dreq, &_xdcs, &_xcs, &_rst);//, &ssp);
                     _xdcs.setLow(); //chip select the decoder (active low)
                     {
                         send = *dat++;
-                        recv = ssp0_exchange_byte(send);
+                        recv = spi_transfer(send);
                     }
                     _xdcs.setHigh();
 
@@ -93,11 +96,6 @@ VS1053 obj(&_dreq, &_xdcs, &_xcs, &_rst);//, &ssp);
                 }
 
                 dat_pos = 0;
-                //dat_ofs += 512;
-
-//                if(val == 0){
-//                    break;
-//                }
             }
             }
 
@@ -134,6 +132,11 @@ void green_button_press_isr(){
 int main(void) {
     int *val;
     bool IntrAttach;
+    // spi_init(8, spi, Ext, 1);
+
+   //  obj.vs_init();
+   //  // ssp->init(8, SPI_, External, 1);
+
     obj.vs_init();
 
     printf("Initialization is Complete.\n");
