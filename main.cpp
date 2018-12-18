@@ -36,6 +36,7 @@
 
 /* returns minimum of two given numbers */
 #define min(a,b) (((a)<(b))?(a):(b))
+#define SONG_COUNT 14
 
 int i=0;
 
@@ -59,29 +60,28 @@ TaskHandle_t xHandle3;
 SemaphoreHandle_t spi_bus_lock;
 BaseType_t *flag;
 
+bool norm_exec = true;
+
 void reader_task(void *pv){
     while(1){
     printf("\n\nEntered reader task.\n\n");
 
-//    F_FILE *fd;
-//    int file_size = f_size(&fd);
-
-    //FILE *fd = fopen("1:songs/Louis Armstrong - What A Wonderful World.mp3", "r");
-    //FILE *fd = fopen("1:songs/Fetty Wap - Trap Queen (Clean).mp3", "r");
-    //FILE *fd = fopen("1:songs/The Weeknd - Can't Feel My Face.mp3", "r");
-    //FILE *fd = fopen("1:songs/Belinda Carlisle - Heaven Is a Place on Earth Lyrics.mp3", "r");
-    //FILE *fd = fopen("1:songs/SEA 30 SEC.mp3", "r");
-    //FILE *fd = fopen("1:songs/Queen - Bohemian Rhapsody.mp3", "r");
-    //FILE *fd = fopen("1:songs/Ariana Grande - Last Christmas.mp3", "r");
-
     //char tot[128] = {0};
     char dir[10] = "1:songs/";
     //strcat(tot, dir);
+    if(norm_exec){
+        if(obj.retSongIdx() == SONG_COUNT){
+            obj.setSongIdx(0);
+        }
+        else{
+            obj.incSongIdx();
+        }
+    }
+
     strcat(dir, obj.retSong());
-
     uart0_puts(dir);
-
     FILE *fd = fopen(dir, "r");
+    norm_exec = true;
 
     int dat_ofs = 0;
     uint8_t data[512];
@@ -105,6 +105,7 @@ void reader_task(void *pv){
                     }
 
                     if(obj.button_song_stat() == diff_song){
+                        norm_exec = false; //will prevent from going to next song
                         break;
                     }
                 }

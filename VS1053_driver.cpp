@@ -30,6 +30,7 @@
 #include <libgen.h>
 #include <errno.h>
 
+
  VS1053::VS1053(LabGPIO_0 *dreq, LabGPIO_0 *xdcs, LabGPIO_0 *xcs, LabGPIO_0 *rst){//, LabSpi *spi){
 //due to limitations in data allocation objects must be passed by reference.
     DREQ = dreq;
@@ -286,7 +287,7 @@ void VS1053::songLibrary(){
          }
          else{ //verified file
              printf("short name: %s/%s ------", "songs", fno.fname);
-             if(i<15){
+             if(i<SONG_COUNT+1){
              songs[i] = new char[128+1];
              strcpy(songs[i],fno.lfname);
              printf("long name: %s/%s\n", "songs", songs[i]);
@@ -333,7 +334,7 @@ char* VS1053::retSong(){
 }
 
 void VS1053::incSongIdx(){ //toggle through lcd display
-    if(song_pointer < 14){
+    if(song_pointer < SONG_COUNT){
         song_pointer++;
         printf("Song %i: %s\n", song_pointer, retSong());
     }
@@ -346,4 +347,11 @@ void VS1053::decSongIdx(){ //toggle through lcd display
     }
 }
 
+int VS1053::retSongIdx(){
+    return song_pointer;
+}
+
+void VS1053::setSongIdx(int idx){
+    song_pointer = idx;
+}
 

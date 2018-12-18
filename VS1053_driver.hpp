@@ -28,6 +28,7 @@
 
 #define write_op_sci 0x02
 #define read_op_sci 0x03
+#define SONG_COUNT 14
 
 typedef enum{
     play = 0,
@@ -51,8 +52,8 @@ private:
     buttons button_play;
     buttons button_vol;
     buttons button_song;
-    char *songs[15]; //contains all the songs
-    char *song_titles[15]; //contains all the song name including artist (w/o mp3 signature)
+    char *songs[SONG_COUNT+1]; //contains all the songs
+    char *song_titles[SONG_COUNT+1]; //contains all the song name including artist (w/o mp3 signature)
     int song_idx; //indexes the song you want - changes when external button is set
     uint16_t volume; //volume that gets set when external button is pressed
     uint8_t vlm;
@@ -86,6 +87,8 @@ public:
     void getSongs();
     void incSongIdx();
     void decSongIdx();
+    int retSongIdx();
+    void setSongIdx(int idx);
 };
 
 
