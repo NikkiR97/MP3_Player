@@ -45,9 +45,12 @@ LabGPIO_0 _dreq(29,0);
 LabGPIO_0 _xdcs(7, 2);
 LabGPIO_0 _xcs(6, 2);
 // LabSpi ssp(i);
-LabGPIO_0 blue_button(0,0);
+LabGPIO_0 pause_play(0,0);
 LabGPIO_0 vol_up_button(1,2);
 LabGPIO_0 vol_down_button(2,2);
+LabGPIO_0 sel(3,2);
+LabGPIO_0 up(4,2);
+LabGPIO_0 down(5,2);
 
 VS1053 obj(&_dreq, &_xdcs, &_xcs, &_rst);//, &ssp);
 
@@ -346,7 +349,7 @@ int main(void) {
    const uint32_t STACK_SIZE_WORDS = 1024; //make sure the stack size is big enough to send data through
 
     int *val;
-    bool IntrAttach, IntrAttach2, IntrAttach3;
+    bool IntrAttach, IntrAttach2, IntrAttach3, IntrAttach4, IntrAttach5, IntrAttach6;
 
    obj.vs_init();
 
@@ -354,22 +357,25 @@ int main(void) {
 
    obj.songLibrary(); //adding songs to the library
 
-   blue_button.setAsInput();
+   pause_play.setAsInput();
    vol_up_button.setAsInput();
    vol_down_button.setAsInput();
+   sel.setAsInput();
+   up.setAsInput();
+   down.setAsInput();
 
    LabGPIOInterrupts* gpio_interrupt = LabGPIOInterrupts::CreateOneInstance();
    // Init things once
    gpio_interrupt->Initialize();
 
-//   IntrAttach = gpio_interrupt->AttachInterruptHandler(0, 0, &play_pause_isr, kRisingEdge);
-//   IntrAttach2 = gpio_interrupt->AttachInterruptHandler(2, 1, &volume_up_intr, kRisingEdge);
-//   IntrAttach3 = gpio_interrupt->AttachInterruptHandler(2, 2, &volume_down_intr, kRisingEdge);
-   IntrAttach = gpio_interrupt->AttachInterruptHandler(0, 0, &select_song_isr, kRisingEdge);
-   IntrAttach2 = gpio_interrupt->AttachInterruptHandler(2, 1, &up_cursor_isr, kRisingEdge);
-   IntrAttach3 = gpio_interrupt->AttachInterruptHandler(2, 2, &down_cursor_isr, kRisingEdge);
+   IntrAttach = gpio_interrupt->AttachInterruptHandler(0, 0, &play_pause_isr, kRisingEdge);
+   IntrAttach2 = gpio_interrupt->AttachInterruptHandler(2, 1, &volume_up_intr, kRisingEdge);
+   IntrAttach3 = gpio_interrupt->AttachInterruptHandler(2, 2, &volume_down_intr, kRisingEdge);
+   IntrAttach4 = gpio_interrupt->AttachInterruptHandler(2, 3, &select_song_isr, kRisingEdge);
+   IntrAttach5 = gpio_interrupt->AttachInterruptHandler(2, 4, &up_cursor_isr, kRisingEdge);
+   IntrAttach6 = gpio_interrupt->AttachInterruptHandler(2, 5, &down_cursor_isr, kRisingEdge);
 
-   if(IntrAttach && IntrAttach2 && IntrAttach3){
+   if(IntrAttach && IntrAttach2 && IntrAttach3 && IntrAttach4 && IntrAttach5 && IntrAttach6){
        printf("All interrupts attached to isr's. \n");
    }
    else{
