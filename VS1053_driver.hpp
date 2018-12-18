@@ -17,7 +17,7 @@
 
 #include "LabGPIO_0.hpp"
 #include "LabGPIOInterrupts.hpp"
-#include "LabSPI.hpp"
+//#include "LabSPI.hpp"
 
 #define sci_status 0x01
 #define sci_bass 0x02
@@ -29,6 +29,14 @@
 #define write_op_sci 0x02
 #define read_op_sci 0x03
 
+typedef enum{
+    play = 0,
+    pause = 1,
+    vol_up = 2,
+    vol_down = 3,
+    ctrl_off = 4
+}buttons;
+
 class VS1053{
 private:
     LabGPIO_0* DREQ;
@@ -37,10 +45,15 @@ private:
     LabGPIO_0* RST;
     // LabSpi* SPI;
 
-    volatile bool run_song; //if true continue running song, if false, pause song
-    std::string songs[10]; //contains all the songs
+//    volatile bool run_song; //if true continue running song, if false, pause song
+    buttons button_play;
+    buttons button_vol;
+    char *songs[10]; //contains all the songs
+    char *song_titles[10]; //contains all the song name including artist (w/o mp3 signature)
     int song_idx; //indexes the song you want - changes when external button is set
-    //uint8_t volume; //volume that gets set when external button is pressed
+    uint16_t volume; //volume that gets set when external button is pressed
+    uint8_t vlm;
+    int number_songs;
 
 public:
     VS1053(LabGPIO_0 *dreq, LabGPIO_0 *xdcs, LabGPIO_0 *xcs, LabGPIO_0 *rst);//, LabSpi *spi);
@@ -51,10 +64,20 @@ public:
     void write_to_sci(uint8_t addr, uint16_t data);
     uint16_t read_from_sci(uint8_t addr);
     void setVolume(uint8_t vol); //adjust the volume
-    void pauseSong(); //prevent streaming of bytes ~ will set run_song boolean flag
-    void resumeSong(); //continue streaming of bytes ~ will reset run_song boolean flag
-    bool ret_run_song_flag();
-    FRESULT songLibrary(char* path); //read all songs from the directory and store their names in the songs array
+    uint8_t ret_vol();
+    void volume_up();
+    void volume_down();
+    void inc_volume();
+    void dec_volume();
+
+    void set_button_play(buttons value);
+    void set_button_vol(buttons value);
+
+    buttons button_play_stat();
+    buttons button_vol_stat();
+
+    void songLibrary(); //read all songs from the directory and store their names in the songs array
+    void getSongs();
 };
 
 
