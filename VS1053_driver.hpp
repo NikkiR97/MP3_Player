@@ -34,7 +34,9 @@ typedef enum{
     pause = 1,
     vol_up = 2,
     vol_down = 3,
-    ctrl_off = 4
+    ctrl_off = 4,
+    current = 5,
+    diff_song = 6
 }buttons;
 
 class VS1053{
@@ -48,12 +50,13 @@ private:
 //    volatile bool run_song; //if true continue running song, if false, pause song
     buttons button_play;
     buttons button_vol;
-    char *songs[10]; //contains all the songs
-    char *song_titles[10]; //contains all the song name including artist (w/o mp3 signature)
+    buttons button_song;
+    char *songs[15]; //contains all the songs
+    char *song_titles[15]; //contains all the song name including artist (w/o mp3 signature)
     int song_idx; //indexes the song you want - changes when external button is set
     uint16_t volume; //volume that gets set when external button is pressed
     uint8_t vlm;
-    int number_songs;
+    int song_pointer;
 
 public:
     VS1053(LabGPIO_0 *dreq, LabGPIO_0 *xdcs, LabGPIO_0 *xcs, LabGPIO_0 *rst);//, LabSpi *spi);
@@ -72,12 +75,17 @@ public:
 
     void set_button_play(buttons value);
     void set_button_vol(buttons value);
+    void set_button_song(buttons value);
 
     buttons button_play_stat();
     buttons button_vol_stat();
+    buttons button_song_stat();
 
     void songLibrary(); //read all songs from the directory and store their names in the songs array
+    char* retSong();
     void getSongs();
+    void incSongIdx();
+    void decSongIdx();
 };
 
 

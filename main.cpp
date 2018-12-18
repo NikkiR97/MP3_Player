@@ -27,6 +27,7 @@
 #include "tasks.hpp"
 #include "ff.h"
 #include "eint.h"
+#include "uart0_min.h"
 
 #include "LabGPIO_0.hpp"
 #include "LabGPIOInterrupts.hpp"
@@ -63,16 +64,24 @@ void reader_task(void *pv){
     printf("\n\nEntered reader task.\n\n");
 
 //    F_FILE *fd;
-//    fd = f_open(&fd, "1:Watchdog/stuck.txt", FA_OPEN_EXISTING|FA_READ);
 //    int file_size = f_size(&fd);
 
     //FILE *fd = fopen("1:songs/Louis Armstrong - What A Wonderful World.mp3", "r");
-    //FILE *fd = fopen("1:Fetty Wap - Trap Queen (Official Video) Prod. By Tony Fadd", "r");
+    //FILE *fd = fopen("1:songs/Fetty Wap - Trap Queen (Clean).mp3", "r");
     //FILE *fd = fopen("1:songs/The Weeknd - Can't Feel My Face.mp3", "r");
     //FILE *fd = fopen("1:songs/Belinda Carlisle - Heaven Is a Place on Earth Lyrics.mp3", "r");
     //FILE *fd = fopen("1:songs/SEA 30 SEC.mp3", "r");
-    FILE *fd = fopen("1:songs/Queen - Bohemian Rhapsody.mp3", "r");
+    //FILE *fd = fopen("1:songs/Queen - Bohemian Rhapsody.mp3", "r");
+    //FILE *fd = fopen("1:songs/Ariana Grande - Last Christmas.mp3", "r");
 
+    //char tot[128] = {0};
+    char dir[10] = "1:songs/";
+    //strcat(tot, dir);
+    strcat(dir, obj.retSong());
+
+    uart0_puts(dir);
+
+    FILE *fd = fopen(dir, "r");
 
     int dat_ofs = 0;
     uint8_t data[512];
@@ -86,14 +95,21 @@ void reader_task(void *pv){
       //while(1){
 
                 while(!feof(fd)){//while(dat_ofs < (file_size-1)){
+                    if(obj.button_vol_stat() == ctrl_off){
                     fread(data, 1, 512, fd);
                     //f_read(&fd, 1, 512, &data)
                     xQueueSend(q, &data, 100);
 
                     while(obj.button_play_stat() == pause); //don't send any more 512 byte chunks
                     //dat_ofs += 512;
+                    }
+
+                    if(obj.button_song_stat() == diff_song){
+                        break;
+                    }
                 }
                 fclose(fd);
+                obj.set_button_song(current); //reset back to current
         //           }
     }
     else{
@@ -144,7 +160,7 @@ void player_task(void *pv){
     }
 
     while(1){
-        if(obj.button_vol_stat() == ctrl_off){
+//        if(obj.button_vol_stat() == ctrl_off){
 
         xQueueReceive(q, &data, portMAX_DELAY);
         dat = data;
@@ -163,7 +179,7 @@ void player_task(void *pv){
             _xdcs.setHigh();
 
         dat_pos++;
-        }
+//        }
         }
     }
 }
@@ -268,12 +284,7 @@ void send_to_mp3(void *pv){
 
 }
 
-
-void red_button_press_isr(){
-
-}
-
-void blue_button_press_isr(){
+void play_pause_isr(){
     if(obj.button_play_stat() == play){ //if true
         delay_ms(10);
         obj.set_button_play(pause);
@@ -286,10 +297,6 @@ void blue_button_press_isr(){
 //        obj.resumeSong(); //set to true
         printf("Resume the song \n");
     }
-}
-
-void green_button_press_isr(){
-
 }
 
 void volume_up_intr(){ //warning need to relinquish bus control
@@ -316,6 +323,20 @@ void volume_down_intr(){ //warning need to relinquish bus control
 
 }
 
+void select_song_isr(){ //make song change, set bool flag
+    obj.set_button_song(diff_song);
+}
+
+void up_cursor_isr(){
+    obj.incSongIdx();
+    delay_ms(100);
+}
+
+void down_cursor_isr(){
+    obj.decSongIdx();
+    delay_ms(100);
+}
+
 int main(void) {
    spi_bus_lock = xSemaphoreCreateBinary();
    q = xQueueCreate(1, sizeof(uint8_t)*512); //used for sending the mp3 file data
@@ -340,9 +361,12 @@ int main(void) {
    // Init things once
    gpio_interrupt->Initialize();
 
-   IntrAttach = gpio_interrupt->AttachInterruptHandler(0, 0, &blue_button_press_isr, kRisingEdge);
-   IntrAttach2 = gpio_interrupt->AttachInterruptHandler(2, 1, &volume_up_intr, kRisingEdge);
-   IntrAttach3 = gpio_interrupt->AttachInterruptHandler(2, 2, &volume_down_intr, kRisingEdge);
+//   IntrAttach = gpio_interrupt->AttachInterruptHandler(0, 0, &play_pause_isr, kRisingEdge);
+//   IntrAttach2 = gpio_interrupt->AttachInterruptHandler(2, 1, &volume_up_intr, kRisingEdge);
+//   IntrAttach3 = gpio_interrupt->AttachInterruptHandler(2, 2, &volume_down_intr, kRisingEdge);
+   IntrAttach = gpio_interrupt->AttachInterruptHandler(0, 0, &select_song_isr, kRisingEdge);
+   IntrAttach2 = gpio_interrupt->AttachInterruptHandler(2, 1, &up_cursor_isr, kRisingEdge);
+   IntrAttach3 = gpio_interrupt->AttachInterruptHandler(2, 2, &down_cursor_isr, kRisingEdge);
 
    if(IntrAttach && IntrAttach2 && IntrAttach3){
        printf("All interrupts attached to isr's. \n");
